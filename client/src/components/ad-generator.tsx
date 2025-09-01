@@ -81,7 +81,8 @@ export function AdGenerator() {
   // Handle config changes from TextPositionEditor
   const handleConfigChange = (newConfig: TextConfig) => {
     console.log("AdGenerator received config change:", newConfig);
-    setTextConfig(newConfig);
+    // Force a new object reference to ensure React detects the change
+    setTextConfig({ ...newConfig });
   };
 
   useEffect(() => {
@@ -120,6 +121,13 @@ export function AdGenerator() {
   }, [toast]);
 
   useEffect(() => {
+    console.log("Canvas render effect triggered:", { 
+      hasCanvasRenderer: !!canvasRenderer, 
+      hasFontLoader: !!fontLoader, 
+      hasTextConfig: !!textConfig,
+      textConfig 
+    });
+    
     if (canvasRenderer && fontLoader && textConfig) {
       try {
         console.log("Re-rendering canvas with config:", textConfig);
