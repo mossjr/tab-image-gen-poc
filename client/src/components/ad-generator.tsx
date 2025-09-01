@@ -115,6 +115,7 @@ export function AdGenerator() {
   useEffect(() => {
     if (canvasRenderer && fontLoader && textConfig) {
       try {
+        console.log("Re-rendering canvas with config:", textConfig);
         canvasRenderer.renderWithText(formData, textConfig);
         setLastUpdated(new Date().toLocaleTimeString());
         setStatus({ text: "Ready", type: "ready" });

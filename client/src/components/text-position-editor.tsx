@@ -92,6 +92,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       [activeField]: updatedFieldConfig,
     };
 
+    console.log("Updating config for field:", activeField, "with data:", updatedFieldConfig);
     onConfigChange(newConfig);
   };
 
@@ -101,7 +102,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       handleFieldUpdate(formData);
-    }, 100);
+    }, 50); // Reduced debounce for more responsive updates
     
     return () => clearTimeout(timeoutId);
   }, [formData]);
