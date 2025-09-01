@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -11,7 +11,7 @@ import { Download, Eye, Image, Edit, Info, RefreshCw, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast";
 import { CanvasRenderer } from "@/lib/canvas-renderer";
 import { FontLoader } from "@/lib/font-loader";
-// import { TextPositionEditor } from "@/components/text-position-editor";
+import { TextPositionEditor } from "@/components/text-position-editor";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type TextConfig, type AdContent, adContentSchema } from "@shared/schema";
 import templateImagePath from "@assets/2025_08_Green_Harness_Template_1756701532557.png";
@@ -45,8 +45,8 @@ export function AdGenerator() {
     enabled: true,
   });
 
-  // Use hardcoded text config to prevent infinite loops
-  const textConfig: TextConfig = {
+  // Use stable text config to prevent infinite loops
+  const textConfig = useMemo<TextConfig>(() => ({
     raceName: {
       bottom: 200,
       left: 100,
@@ -87,7 +87,7 @@ export function AdGenerator() {
       fontSize: 48,
       color: "#ffffff"
     }
-  };
+  }), []);
 
   // Save ad content to database
   const saveAdContentMutation = useMutation({
@@ -97,13 +97,13 @@ export function AdGenerator() {
     },
   });
 
-  // Save text positioning configuration to database (disabled for now)
-  // const saveConfigMutation = useMutation({
-  //   mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
-  //   onError: () => {
-  //     toast({ title: "Save Error", description: "Failed to save settings.", variant: "destructive" });
-  //   },
-  // });
+  // Save text positioning configuration to database
+  const saveConfigMutation = useMutation({
+    mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
+    onError: () => {
+      toast({ title: "Save Error", description: "Failed to save settings.", variant: "destructive" });
+    },
+  });
 
   // Update form when ad content loads from database
   useEffect(() => {
@@ -355,13 +355,11 @@ export function AdGenerator() {
           
           <TabsContent value="positioning" className="mt-6">
             <div className="w-full">
-              <Card>
-                <CardContent className="pt-6">
-                  <p className="text-center text-muted-foreground">
-                    Text positioning editor temporarily disabled to fix performance issues.
-                  </p>
-                </CardContent>
-              </Card>
+              <TextPositionEditor
+                config={textConfig}
+                onConfigChange={handleConfigChange}
+                onSave={(config) => saveConfigMutation.mutate(config)}
+              />
             </div>
           </TabsContent>
         </Tabs>
