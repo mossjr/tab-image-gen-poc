@@ -92,19 +92,20 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       [activeField]: updatedFieldConfig,
     };
 
+    // Only call onConfigChange for preview updates, not for saving
     onConfigChange(newConfig);
-  }, [activeField, onConfigChange]);
+  }, [config, activeField, onConfigChange]);
 
   const formData = form.watch();
   
-  // Update config whenever form data changes, but debounce it
+  // Update config for preview whenever form data changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       handleFieldUpdate(formData);
-    }, 50); // Reduced debounce for more responsive updates
+    }, 100); // Quick update for live preview
     
     return () => clearTimeout(timeoutId);
-  }, [formData]);
+  }, [formData, handleFieldUpdate]);
 
   const resetToDefaults = () => {
     const defaultConfig: TextConfig = {

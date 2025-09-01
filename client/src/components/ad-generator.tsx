@@ -63,7 +63,6 @@ export function AdGenerator() {
   const saveConfigMutation = useMutation({
     mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
     onSuccess: () => {
-      toast({ title: "Settings Saved", description: "Text positioning has been saved." });
       queryClient.invalidateQueries({ queryKey: ['/api/text-config/default'] });
     },
     onError: () => {
@@ -141,9 +140,10 @@ export function AdGenerator() {
     }
   }, [currentAdData, textConfig, canvasRenderer, fontLoader]);
 
-  const handleConfigChange = (newConfig: TextConfig) => {
-    saveConfigMutation.mutate(newConfig);
-  };
+  const handleConfigChange = useCallback((newConfig: TextConfig) => {
+    // This is called for live preview updates only, not for saving
+    // The actual saving happens in the TextPositionEditor via onSave prop
+  }, []);
 
   const handleDownload = () => {
     if (!canvasRef.current) {
