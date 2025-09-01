@@ -72,7 +72,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       fontSize: fieldConfig.fontSize,
       color: fieldConfig.color,
     });
-  }, [activeField, config, form]);
+  }, [activeField, form]);
 
   const handleFieldUpdate = useCallback((data: SingleFieldData) => {
     const updatedFieldConfig: TextPositionConfig = {

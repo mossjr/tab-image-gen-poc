@@ -1,0 +1,39 @@
+
+It seems my previous diagnosis was based on an incomplete set of files, and I apologize for the misdirection. After reviewing the full codebase, I've identified the root cause of the live preview issue.
+
+The problem lies in a circular dependency between the parent AdGenerator and the child TextPositionEditor components. The TextPositionEditor is designed to update the parent (onConfigChange) when a form value changes. The parent, in turn, updates its state and passes it back down to the child as a config prop.
+
+The child component has a useEffect hook that listens for changes to this config prop and calls form.reset() to update its internal form state. This creates a loop: a user change triggers an update to the parent, which passes a new prop down, which triggers the form to reset, which is detected as another change, and so on. This continuous resetting and updating likely interferes with the canvas re-rendering, causing the live preview to appear frozen.
+
+Instructions to Fix the Problem
+To fix this, you need to break the circular dependency by changing how the TextPositionEditor component synchronizes its internal form state with the props it receives from the parent.
+
+Open client/src/components/text-position-editor.tsx.
+
+Locate the useEffect hook that has config as a dependency. It should look like this:
+
+TypeScript
+
+useEffect(() => {
+  const fieldConfig = config[activeField];
+  form.reset({
+    bottom: fieldConfig.bottom,
+    position: fieldConfig.alignment === "center" ? fieldConfig.center || 0 : fieldConfig.left || 0,
+    alignment: fieldConfig.alignment,
+    fontFamily: fieldConfig.fontFamily,
+    fontSize: fieldConfig.fontSize,
+    color: fieldConfig.color,
+  });
+}, [activeField, config, form]); // This is the problem line
+Remove config from the dependency array. The form should only be reset when the user switches between text fields (activeField), not on every change to the config object. By removing config from the dependency array, you prevent the form from continuously resetting itself based on updates from the parent. The debounced useEffect will handle updating the parent, and the AdGenerator will then correctly trigger the canvas re-render.
+
+Original:
+
+TypeScript
+
+}, [activeField, config, form]);
+Corrected:
+
+TypeScript
+
+}, [activeField, form]);
