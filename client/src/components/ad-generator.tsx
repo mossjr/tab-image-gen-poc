@@ -1,88 +1,99 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Eye, Image, Edit, Info, RefreshCw } from "lucide-react";
+import { Download, Eye, Image, Edit, Info, RefreshCw, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CanvasRenderer } from "@/lib/canvas-renderer";
 import { FontLoader } from "@/lib/font-loader";
 import { TextPositionEditor } from "@/components/text-position-editor";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { type TextConfig } from "@shared/schema";
+import { type TextConfig, type AdContent, adContentSchema } from "@shared/schema";
 import templateImagePath from "@assets/2025_08_Green_Harness_Template_1756701532557.png";
-
-const formSchema = z.object({
-  raceName: z.string().min(1, "Race name is required"),
-  prizeAmount: z.string().min(1, "Prize amount is required"),
-  projectedPool: z.string().min(1, "Projected pool is required"),
-  day: z.string().min(1, "Day is required"),
-  numberOfRaces: z.string().min(1, "Number of races is required"),
-});
-
-type FormData = z.infer<typeof formSchema>;
 
 export function AdGenerator() {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [canvasRenderer, setCanvasRenderer] = useState<CanvasRenderer | null>(null);
   const [fontLoader, setFontLoader] = useState<FontLoader | null>(null);
+  const [currentAdData, setCurrentAdData] = useState<AdContent>({
+    raceName: "Emerald Stakes",
+    prizeAmount: "50,000", 
+    projectedPool: "125,000",
+    day: "SATURDAY",
+    numberOfRaces: "8",
+  });
   const [status, setStatus] = useState<{
     text: string;
     type: "ready" | "loading" | "error";
   }>({ text: "Initializing...", type: "loading" });
   const [lastUpdated, setLastUpdated] = useState<string>("--");
-  const [textConfig, setTextConfig] = useState<TextConfig | null>(null);
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      raceName: "Emerald Stakes",
-      prizeAmount: "50,000",
-      projectedPool: "125,000",
-      day: "SATURDAY",
-      numberOfRaces: "8",
-    },
+  const form = useForm<AdContent>({
+    resolver: zodResolver(adContentSchema),
+    defaultValues: currentAdData,
   });
 
-  const formData = form.watch();
+  // Load ad content from database
+  const { data: adContent } = useQuery({
+    queryKey: ['/api/ad-content/default'],
+    enabled: true,
+  });
 
-  // Load text positioning configuration
-  const { data: configData } = useQuery({
+  // Load text positioning configuration from database
+  const { data: textConfig } = useQuery({
     queryKey: ['/api/text-config/default'],
     enabled: true,
   });
 
-  // Save text positioning configuration
-  const saveConfigMutation = useMutation({
-    mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
+  // Save ad content to database
+  const saveAdContentMutation = useMutation({
+    mutationFn: (content: AdContent) => apiRequest('POST', '/api/ad-content/default', content),
     onSuccess: () => {
-      toast({ title: "Configuration Saved", description: "Text positioning settings have been saved." });
-      queryClient.invalidateQueries({ queryKey: ['/api/text-config/default'] });
-    },
-    onError: () => {
-      toast({ title: "Save Error", description: "Failed to save configuration.", variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ['/api/ad-content/default'] });
     },
   });
 
-  // Update local text config when data loads
+  // Save text positioning configuration to database  
+  const saveConfigMutation = useMutation({
+    mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
+    onSuccess: () => {
+      toast({ title: "Settings Saved", description: "Text positioning has been saved." });
+      queryClient.invalidateQueries({ queryKey: ['/api/text-config/default'] });
+    },
+    onError: () => {
+      toast({ title: "Save Error", description: "Failed to save settings.", variant: "destructive" });
+    },
+  });
+
+  // Update form when ad content loads from database
   useEffect(() => {
-    if (configData) {
-        setTextConfig(configData as TextConfig);
+    if (adContent) {
+      setCurrentAdData(adContent as AdContent);
+      form.reset(adContent as AdContent);
     }
-  }, [configData]);
+  }, [adContent]);
 
-  // Handle config changes from TextPositionEditor
-  const handleConfigChange = (newConfig: TextConfig) => {
-    // Force a new object reference to ensure React detects the change
-    setTextConfig({ ...newConfig });
-  };
+  // Handle form changes
+  const handleFormChange = useCallback((field: keyof AdContent, value: string) => {
+    const newData = { ...currentAdData, [field]: value };
+    setCurrentAdData(newData);
+    form.setValue(field, value);
+    
+    // Debounced save
+    const timeoutId = setTimeout(() => {
+      saveAdContentMutation.mutate(newData);
+    }, 1000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [currentAdData, form, saveAdContentMutation]);
 
+  // Initialize canvas and fonts
   useEffect(() => {
     const initializeCanvas = async () => {
       if (!canvasRef.current) return;
@@ -90,14 +101,12 @@ export function AdGenerator() {
       try {
         setStatus({ text: "Loading fonts...", type: "loading" });
         
-        // Initialize font loader with fallback to Google Fonts
         const loader = new FontLoader();
         await loader.loadFonts();
         setFontLoader(loader);
 
         setStatus({ text: "Loading template...", type: "loading" });
         
-        // Initialize canvas renderer
         const renderer = new CanvasRenderer(canvasRef.current);
         await renderer.loadTemplate(templateImagePath);
         setCanvasRenderer(renderer);
@@ -109,7 +118,7 @@ export function AdGenerator() {
         setStatus({ text: "Error loading template", type: "error" });
         toast({
           title: "Initialization Error",
-          description: "Failed to load template or fonts. Using fallback rendering.",
+          description: "Failed to load template or fonts.",
           variant: "destructive",
         });
       }
@@ -118,11 +127,11 @@ export function AdGenerator() {
     initializeCanvas();
   }, [toast]);
 
+  // Re-render canvas when data or config changes
   useEffect(() => {
-    
-    if (canvasRenderer && fontLoader && textConfig) {
+    if (canvasRenderer && fontLoader && currentAdData && textConfig) {
       try {
-        canvasRenderer.renderWithText(formData, textConfig);
+        canvasRenderer.renderWithText(currentAdData, textConfig as TextConfig);
         setLastUpdated(new Date().toLocaleTimeString());
         setStatus({ text: "Ready", type: "ready" });
       } catch (error) {
@@ -130,7 +139,11 @@ export function AdGenerator() {
         setStatus({ text: "Render error", type: "error" });
       }
     }
-  }, [formData, canvasRenderer, fontLoader, textConfig]);
+  }, [currentAdData, textConfig, canvasRenderer, fontLoader]);
+
+  const handleConfigChange = (newConfig: TextConfig) => {
+    saveConfigMutation.mutate(newConfig);
+  };
 
   const handleDownload = () => {
     if (!canvasRef.current) {
@@ -146,7 +159,7 @@ export function AdGenerator() {
       setStatus({ text: "Preparing download...", type: "loading" });
       
       const link = document.createElement("a");
-      link.download = `ad_${formData.raceName.replace(/\s+/g, "_").toLowerCase()}_${Date.now()}.png`;
+      link.download = `ad_${currentAdData.raceName.replace(/\s+/g, "_").toLowerCase()}_${Date.now()}.png`;
       link.href = canvasRef.current.toDataURL("image/png");
       link.click();
       
@@ -167,8 +180,15 @@ export function AdGenerator() {
   };
 
   const handleReset = () => {
-    form.reset();
-    setLastUpdated(new Date().toLocaleTimeString());
+    const defaultData: AdContent = {
+      raceName: "Emerald Stakes",
+      prizeAmount: "50,000",
+      projectedPool: "125,000", 
+      day: "SATURDAY",
+      numberOfRaces: "8",
+    };
+    setCurrentAdData(defaultData);
+    form.reset(defaultData);
   };
 
   return (
@@ -186,9 +206,15 @@ export function AdGenerator() {
               {/* Form Panel */}
               <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center space-x-2 mb-6">
-                    <Edit className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold text-card-foreground">Ad Content</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-2">
+                      <Edit className="h-5 w-5 text-primary" />
+                      <h2 className="text-lg font-semibold text-card-foreground">Ad Content</h2>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                      <Save className="h-4 w-4" />
+                      <span>Auto-saving</span>
+                    </div>
                   </div>
                   
                   <form className="space-y-6">
@@ -197,14 +223,10 @@ export function AdGenerator() {
                       <Input
                         id="raceName"
                         data-testid="input-race-name"
-                        {...form.register("raceName")}
+                        value={currentAdData.raceName}
+                        onChange={(e) => handleFormChange("raceName", e.target.value)}
                         placeholder="Enter race name"
                       />
-                      {form.formState.errors.raceName && (
-                        <p className="text-sm text-destructive mt-1">
-                          {form.formState.errors.raceName.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className="form-field">
@@ -214,16 +236,12 @@ export function AdGenerator() {
                         <Input
                           id="prizeAmount"
                           data-testid="input-prize-amount"
-                          {...form.register("prizeAmount")}
+                          value={currentAdData.prizeAmount}
+                          onChange={(e) => handleFormChange("prizeAmount", e.target.value)}
                           className="pl-8"
                           placeholder="0.00"
                         />
                       </div>
-                      {form.formState.errors.prizeAmount && (
-                        <p className="text-sm text-destructive mt-1">
-                          {form.formState.errors.prizeAmount.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className="form-field">
@@ -233,16 +251,12 @@ export function AdGenerator() {
                         <Input
                           id="projectedPool"
                           data-testid="input-projected-pool"
-                          {...form.register("projectedPool")}
+                          value={currentAdData.projectedPool}
+                          onChange={(e) => handleFormChange("projectedPool", e.target.value)}
                           className="pl-8"
                           placeholder="0.00"
                         />
                       </div>
-                      {form.formState.errors.projectedPool && (
-                        <p className="text-sm text-destructive mt-1">
-                          {form.formState.errors.projectedPool.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className="form-field">
@@ -250,14 +264,10 @@ export function AdGenerator() {
                       <Input
                         id="day"
                         data-testid="input-day"
-                        {...form.register("day")}
+                        value={currentAdData.day}
+                        onChange={(e) => handleFormChange("day", e.target.value)}
                         placeholder="Enter day"
                       />
-                      {form.formState.errors.day && (
-                        <p className="text-sm text-destructive mt-1">
-                          {form.formState.errors.day.message}
-                        </p>
-                      )}
                     </div>
 
                     <div className="form-field">
@@ -268,14 +278,10 @@ export function AdGenerator() {
                         type="number"
                         min="1"
                         max="20"
-                        {...form.register("numberOfRaces")}
+                        value={currentAdData.numberOfRaces}
+                        onChange={(e) => handleFormChange("numberOfRaces", e.target.value)}
                         placeholder="1"
                       />
-                      {form.formState.errors.numberOfRaces && (
-                        <p className="text-sm text-destructive mt-1">
-                          {form.formState.errors.numberOfRaces.message}
-                        </p>
-                      )}
                     </div>
                   </form>
                 </CardContent>
@@ -292,8 +298,8 @@ export function AdGenerator() {
                         <li>• Template: 2025_08_Green_Harness_Template.png</li>
                         <li>• Dimensions: 1920x1080 pixels</li>
                         <li>• Fonts: Montserrat variants</li>
-                        <li>• Real-time preview enabled</li>
-                        <li>• Editable text positioning</li>
+                        <li>• Database: PostgreSQL storage</li>
+                        <li>• Auto-save: Enabled</li>
                       </ul>
                     </div>
                   </div>
@@ -306,7 +312,7 @@ export function AdGenerator() {
             <div className="w-full">
               {textConfig && (
                 <TextPositionEditor
-                  config={textConfig}
+                  config={textConfig as TextConfig}
                   onConfigChange={handleConfigChange}
                   onSave={(config) => saveConfigMutation.mutate(config)}
                 />

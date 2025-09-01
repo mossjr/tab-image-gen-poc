@@ -93,7 +93,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
     };
 
     onConfigChange(newConfig);
-  }, [config, activeField, onConfigChange]);
+  }, [activeField, onConfigChange]);
 
   const formData = form.watch();
   
@@ -104,7 +104,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
     }, 50); // Reduced debounce for more responsive updates
     
     return () => clearTimeout(timeoutId);
-  }, [formData, handleFieldUpdate]);
+  }, [formData]);
 
   const resetToDefaults = () => {
     const defaultConfig: TextConfig = {

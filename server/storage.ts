@@ -1,6 +1,6 @@
-import { type User, type InsertUser, type TextConfig, type SelectTextPositionConfig, type InsertTextPositionConfig } from "@shared/schema";
+import { type User, type InsertUser, type TextConfig, type SelectTextPositionConfig, type InsertTextPositionConfig, type AdContent, type InsertAdContent, type SelectAdContent } from "@shared/schema";
 import { db } from "./db";
-import { users, textPositionConfigs } from "@shared/schema";
+import { users, textPositionConfigs, adContents } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
@@ -13,6 +13,8 @@ export interface IStorage {
   getTextPositionConfig(name: string): Promise<TextConfig | undefined>;
   saveTextPositionConfig(name: string, config: TextConfig): Promise<SelectTextPositionConfig>;
   listTextPositionConfigs(): Promise<SelectTextPositionConfig[]>;
+  getAdContent(name: string): Promise<AdContent | undefined>;
+  saveAdContent(name: string, content: AdContent): Promise<SelectAdContent>;
 }
 
 
@@ -75,6 +77,71 @@ export class DatabaseStorage implements IStorage {
 
   async listTextPositionConfigs(): Promise<SelectTextPositionConfig[]> {
     return await db.select().from(textPositionConfigs);
+  }
+
+  async getAdContent(name: string): Promise<AdContent | undefined> {
+    const [record] = await db.select().from(adContents).where(eq(adContents.name, name));
+    
+    if (!record) {
+      // Return default content if none exists
+      return await this.createDefaultContent(name);
+    }
+    
+    return {
+      raceName: record.raceName,
+      prizeAmount: record.prizeAmount,
+      projectedPool: record.projectedPool,
+      day: record.day,
+      numberOfRaces: record.numberOfRaces,
+    };
+  }
+
+  async saveAdContent(name: string, content: AdContent): Promise<SelectAdContent> {
+    const [existingRecord] = await db.select().from(adContents).where(eq(adContents.name, name));
+    
+    if (existingRecord) {
+      // Update existing record
+      const [updatedRecord] = await db
+        .update(adContents)
+        .set({ 
+          raceName: content.raceName,
+          prizeAmount: content.prizeAmount,
+          projectedPool: content.projectedPool,
+          day: content.day,
+          numberOfRaces: content.numberOfRaces,
+          updatedAt: new Date()
+        })
+        .where(eq(adContents.name, name))
+        .returning();
+      return updatedRecord;
+    } else {
+      // Create new record
+      const [newRecord] = await db
+        .insert(adContents)
+        .values({
+          name,
+          raceName: content.raceName,
+          prizeAmount: content.prizeAmount,
+          projectedPool: content.projectedPool,
+          day: content.day,
+          numberOfRaces: content.numberOfRaces,
+        })
+        .returning();
+      return newRecord;
+    }
+  }
+
+  private async createDefaultContent(name: string): Promise<AdContent> {
+    const defaultContent: AdContent = {
+      raceName: "Emerald Stakes",
+      prizeAmount: "50,000",
+      projectedPool: "125,000",
+      day: "SATURDAY",
+      numberOfRaces: "8",
+    };
+
+    await this.saveAdContent(name, defaultContent);
+    return defaultContent;
   }
 
   private async createDefaultConfig(name: string): Promise<TextConfig> {

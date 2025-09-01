@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { textConfigSchema } from "@shared/schema";
+import { textConfigSchema, adContentSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get text positioning configuration
@@ -49,6 +49,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(configs);
     } catch (error) {
       console.error("Error listing text configs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get ad content
+  app.get("/api/ad-content/:name", async (req, res) => {
+    try {
+      const { name } = req.params;
+      const content = await storage.getAdContent(name);
+      
+      if (!content) {
+        return res.status(404).json({ error: "Ad content not found" });
+      }
+      
+      res.json(content);
+    } catch (error) {
+      console.error("Error fetching ad content:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Save ad content
+  app.post("/api/ad-content/:name", async (req, res) => {
+    try {
+      const { name } = req.params;
+      const validation = adContentSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          error: "Invalid ad content format",
+          details: validation.error.issues 
+        });
+      }
+      
+      const savedContent = await storage.saveAdContent(name, validation.data);
+      res.json(savedContent);
+    } catch (error) {
+      console.error("Error saving ad content:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
