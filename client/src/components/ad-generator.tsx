@@ -73,9 +73,16 @@ export function AdGenerator() {
   // Update local text config when data loads
   useEffect(() => {
     if (configData) {
+      console.log("Loading initial config from server:", configData);
       setTextConfig(configData as TextConfig);
     }
   }, [configData]);
+
+  // Handle config changes from TextPositionEditor
+  const handleConfigChange = (newConfig: TextConfig) => {
+    console.log("AdGenerator received config change:", newConfig);
+    setTextConfig(newConfig);
+  };
 
   useEffect(() => {
     const initializeCanvas = async () => {
@@ -166,83 +173,18 @@ export function AdGenerator() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Always visible canvas preview */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-2">
-              <Eye className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-card-foreground">Live Preview</h2>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <div className={`w-2 h-2 rounded-full ${
-                status.type === "loading" 
-                  ? "bg-yellow-500 animate-pulse" 
-                  : status.type === "error"
-                  ? "bg-destructive"
-                  : "bg-primary"
-              }`}></div>
-              <span>Live</span>
-            </div>
-          </div>
+    <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 min-h-screen">
+      {/* Main Content Area - Left side on desktop */}
+      <div className="xl:col-span-3 space-y-6">
+        <Tabs defaultValue="content" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="content">Ad Content</TabsTrigger>
+            <TabsTrigger value="positioning">Text Positioning</TabsTrigger>
+          </TabsList>
           
-          {/* Canvas Container */}
-          <div className="canvas-container bg-muted/20 border-2 border-dashed border-border rounded-lg p-4">
-            <canvas
-              ref={canvasRef}
-              width={1920}
-              height={1080}
-              className="w-full h-auto bg-white rounded border border-border shadow-sm"
-              data-testid="canvas-preview"
-            />
-          </div>
-
-          {/* Canvas Controls */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-            <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-              <div className="flex items-center space-x-1">
-                <Image className="h-4 w-4" />
-                <span>1920×1080</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <span className="w-3 h-3 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full"></span>
-                <span>RGB</span>
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                data-testid="button-reset"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button
-                onClick={handleDownload}
-                variant="outline"
-                size="sm"
-                data-testid="button-download"
-                disabled={status.type === "loading"}
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="content" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="content">Ad Content</TabsTrigger>
-          <TabsTrigger value="positioning">Text Positioning</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="content" className="mt-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Form Panel */}
+          <TabsContent value="content" className="mt-6">
             <div className="space-y-6">
+              {/* Form Panel */}
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center space-x-2 mb-6">
@@ -339,10 +281,8 @@ export function AdGenerator() {
                   </form>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Template Info */}
-            <div>
+              {/* Template Info */}
               <Card className="bg-muted/50">
                 <CardContent className="pt-6">
                   <div className="flex items-start space-x-3">
@@ -361,21 +301,99 @@ export function AdGenerator() {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="positioning" className="mt-6">
-          <div className="w-full">
-            {textConfig && (
-              <TextPositionEditor
-                config={textConfig}
-                onConfigChange={setTextConfig}
-                onSave={(config) => saveConfigMutation.mutate(config)}
-              />
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          
+          <TabsContent value="positioning" className="mt-6">
+            <div className="w-full">
+              {textConfig && (
+                <TextPositionEditor
+                  config={textConfig}
+                  onConfigChange={handleConfigChange}
+                  onSave={(config) => saveConfigMutation.mutate(config)}
+                />
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Live Preview Panel - Right side on desktop */}
+      <div className="xl:col-span-2">
+        <div className="sticky top-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-2">
+                  <Eye className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold text-card-foreground">Live Preview</h2>
+                </div>
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <div className={`w-2 h-2 rounded-full ${
+                    status.type === "loading" 
+                      ? "bg-yellow-500 animate-pulse" 
+                      : status.type === "error"
+                      ? "bg-destructive"
+                      : "bg-primary"
+                  }`}></div>
+                  <span>Live</span>
+                </div>
+              </div>
+              
+              {/* Canvas Container */}
+              <div className="canvas-container bg-muted/20 border-2 border-dashed border-border rounded-lg p-4">
+                <canvas
+                  ref={canvasRef}
+                  width={1920}
+                  height={1080}
+                  className="w-full h-auto bg-white rounded border border-border shadow-sm"
+                  data-testid="canvas-preview"
+                />
+              </div>
+
+              {/* Canvas Controls */}
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                  <div className="flex items-center space-x-1">
+                    <Image className="h-4 w-4" />
+                    <span>1920×1080</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <span className="w-3 h-3 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full"></span>
+                    <span>RGB</span>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReset}
+                    data-testid="button-reset"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={handleDownload}
+                    variant="outline"
+                    size="sm"
+                    data-testid="button-download"
+                    disabled={status.type === "loading"}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Status and Last Updated */}
+              <div className="mt-4 pt-4 border-t border-border">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Status: {status.text}</span>
+                  <span>Updated: {lastUpdated}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
