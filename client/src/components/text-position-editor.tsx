@@ -51,7 +51,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
   
   const form = useForm<SingleFieldData>({
     resolver: zodResolver(singleFieldSchema),
-    values: {
+    defaultValues: {
       bottom: currentFieldConfig.bottom,
       position: currentFieldConfig.alignment === "center" ? currentFieldConfig.center || 0 : currentFieldConfig.left || 0,
       alignment: currentFieldConfig.alignment,
@@ -60,6 +60,19 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       color: currentFieldConfig.color,
     },
   });
+
+  // Update form values when active field changes
+  useEffect(() => {
+    const fieldConfig = config[activeField];
+    form.reset({
+      bottom: fieldConfig.bottom,
+      position: fieldConfig.alignment === "center" ? fieldConfig.center || 0 : fieldConfig.left || 0,
+      alignment: fieldConfig.alignment,
+      fontFamily: fieldConfig.fontFamily,
+      fontSize: fieldConfig.fontSize,
+      color: fieldConfig.color,
+    });
+  }, [activeField, config, form]);
 
   const handleFieldUpdate = (data: SingleFieldData) => {
     const updatedFieldConfig: TextPositionConfig = {
@@ -84,9 +97,13 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
 
   const formData = form.watch();
   
-  // Update config whenever form data changes
+  // Update config whenever form data changes, but debounce it
   useEffect(() => {
-    handleFieldUpdate(formData);
+    const timeoutId = setTimeout(() => {
+      handleFieldUpdate(formData);
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
   }, [formData]);
 
   const resetToDefaults = () => {
