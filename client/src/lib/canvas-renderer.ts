@@ -69,7 +69,6 @@ export class CanvasRenderer {
     day: string;
     numberOfRaces: string;
   }, textConfig?: any): void {
-    console.log("CanvasRenderer.renderWithText called with:", { formData, textConfig });
     
     // Start with clean template
     this.renderTemplate();
@@ -95,14 +94,12 @@ export class CanvasRenderer {
   }
 
   private renderTextField(text: string, config: any): void {
-    console.log("Rendering text field:", { text, config });
     
     this.ctx.fillStyle = config.color;
     this.ctx.font = this.getFontString(config.fontFamily, config.fontSize);
     this.ctx.textAlign = config.alignment as CanvasTextAlign;
     
     const x = config.alignment === "center" ? config.center : config.left;
-    console.log("Text position:", { x, y: config.bottom, alignment: config.alignment });
     this.ctx.fillText(text, x, config.bottom);
   }
 

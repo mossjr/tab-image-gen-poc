@@ -1,5 +1,7 @@
 import { type User, type InsertUser, type TextConfig, type SelectTextPositionConfig, type InsertTextPositionConfig } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { db } from "./db";
+import { users, textPositionConfigs } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -13,35 +15,69 @@ export interface IStorage {
   listTextPositionConfigs(): Promise<SelectTextPositionConfig[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private textConfigs: Map<string, SelectTextPositionConfig>;
 
-  constructor() {
-    this.users = new Map();
-    this.textConfigs = new Map();
-    this.loadDefaultConfig();
-  }
-
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
     return user;
   }
 
-  private loadDefaultConfig(): void {
-    // Load default configuration from JSON file
+  async getTextPositionConfig(name: string): Promise<TextConfig | undefined> {
+    const [record] = await db.select().from(textPositionConfigs).where(eq(textPositionConfigs.name, name));
+    
+    if (!record) {
+      // Return default config if none exists
+      return await this.createDefaultConfig(name);
+    }
+    
+    return record.config as TextConfig;
+  }
+
+  async saveTextPositionConfig(name: string, config: TextConfig): Promise<SelectTextPositionConfig> {
+    const [existingRecord] = await db.select().from(textPositionConfigs).where(eq(textPositionConfigs.name, name));
+    
+    if (existingRecord) {
+      // Update existing record
+      const [updatedRecord] = await db
+        .update(textPositionConfigs)
+        .set({ 
+          config: config as any,
+          updatedAt: new Date()
+        })
+        .where(eq(textPositionConfigs.name, name))
+        .returning();
+      return updatedRecord;
+    } else {
+      // Create new record
+      const [newRecord] = await db
+        .insert(textPositionConfigs)
+        .values({
+          name,
+          config: config as any,
+        })
+        .returning();
+      return newRecord;
+    }
+  }
+
+  async listTextPositionConfigs(): Promise<SelectTextPositionConfig[]> {
+    return await db.select().from(textPositionConfigs);
+  }
+
+  private async createDefaultConfig(name: string): Promise<TextConfig> {
     const defaultConfig: TextConfig = {
       raceName: {
         bottom: 200,
@@ -85,39 +121,10 @@ export class MemStorage implements IStorage {
       }
     };
 
-    const configRecord: SelectTextPositionConfig = {
-      id: 1,
-      name: "default",
-      config: defaultConfig,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    this.textConfigs.set("default", configRecord);
-  }
-
-  async getTextPositionConfig(name: string): Promise<TextConfig | undefined> {
-    const record = this.textConfigs.get(name);
-    return record ? record.config as TextConfig : undefined;
-  }
-
-  async saveTextPositionConfig(name: string, config: TextConfig): Promise<SelectTextPositionConfig> {
-    const existingRecord = this.textConfigs.get(name);
-    const record: SelectTextPositionConfig = {
-      id: existingRecord?.id || Date.now(),
-      name,
-      config,
-      createdAt: existingRecord?.createdAt || new Date(),
-      updatedAt: new Date()
-    };
-
-    this.textConfigs.set(name, record);
-    return record;
-  }
-
-  async listTextPositionConfigs(): Promise<SelectTextPositionConfig[]> {
-    return Array.from(this.textConfigs.values());
+    // Save default config to database
+    await this.saveTextPositionConfig(name, defaultConfig);
+    return defaultConfig;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

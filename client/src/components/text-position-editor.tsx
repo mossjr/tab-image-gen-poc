@@ -72,7 +72,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       fontSize: fieldConfig.fontSize,
       color: fieldConfig.color,
     });
-  }, [activeField, form]);
+  }, [activeField]);
 
   const handleFieldUpdate = useCallback((data: SingleFieldData) => {
     const updatedFieldConfig: TextPositionConfig = {
@@ -92,7 +92,6 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
       [activeField]: updatedFieldConfig,
     };
 
-    console.log("Updating config for field:", activeField, "with data:", updatedFieldConfig);
     onConfigChange(newConfig);
   }, [config, activeField, onConfigChange]);
 

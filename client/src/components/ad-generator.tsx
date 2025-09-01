@@ -73,14 +73,12 @@ export function AdGenerator() {
   // Update local text config when data loads
   useEffect(() => {
     if (configData) {
-      console.log("Loading initial config from server:", configData);
-      setTextConfig(configData as TextConfig);
+        setTextConfig(configData as TextConfig);
     }
   }, [configData]);
 
   // Handle config changes from TextPositionEditor
   const handleConfigChange = (newConfig: TextConfig) => {
-    console.log("AdGenerator received config change:", newConfig);
     // Force a new object reference to ensure React detects the change
     setTextConfig({ ...newConfig });
   };
@@ -121,16 +119,9 @@ export function AdGenerator() {
   }, [toast]);
 
   useEffect(() => {
-    console.log("Canvas render effect triggered:", { 
-      hasCanvasRenderer: !!canvasRenderer, 
-      hasFontLoader: !!fontLoader, 
-      hasTextConfig: !!textConfig,
-      textConfig 
-    });
     
     if (canvasRenderer && fontLoader && textConfig) {
       try {
-        console.log("Re-rendering canvas with config:", textConfig);
         canvasRenderer.renderWithText(formData, textConfig);
         setLastUpdated(new Date().toLocaleTimeString());
         setStatus({ text: "Ready", type: "ready" });
