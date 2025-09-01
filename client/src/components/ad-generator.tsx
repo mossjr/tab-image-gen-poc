@@ -11,7 +11,7 @@ import { Download, Eye, Image, Edit, Info, RefreshCw, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast";
 import { CanvasRenderer } from "@/lib/canvas-renderer";
 import { FontLoader } from "@/lib/font-loader";
-import { TextPositionEditor } from "@/components/text-position-editor";
+// import { TextPositionEditor } from "@/components/text-position-editor";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { type TextConfig, type AdContent, adContentSchema } from "@shared/schema";
 import templateImagePath from "@assets/2025_08_Green_Harness_Template_1756701532557.png";
@@ -45,11 +45,49 @@ export function AdGenerator() {
     enabled: true,
   });
 
-  // Load text positioning configuration from database
-  const { data: textConfig } = useQuery({
-    queryKey: ['/api/text-config/default'],
-    enabled: true,
-  });
+  // Use hardcoded text config to prevent infinite loops
+  const textConfig: TextConfig = {
+    raceName: {
+      bottom: 200,
+      left: 100,
+      alignment: "left",
+      fontFamily: "Montserrat-BoldItalic",
+      fontSize: 60,
+      color: "#1fd87b"
+    },
+    prizeAmount: {
+      bottom: 600,
+      left: 200,
+      alignment: "left",
+      fontFamily: "Montserrat-Black",
+      fontSize: 120,
+      color: "#ffffff"
+    },
+    projectedPool: {
+      bottom: 700,
+      left: 540,
+      alignment: "left",
+      fontFamily: "Montserrat-BoldItalic",
+      fontSize: 48,
+      color: "#1fd87b"
+    },
+    day: {
+      bottom: 800,
+      left: 700,
+      alignment: "left",
+      fontFamily: "Montserrat-BoldItalic",
+      fontSize: 48,
+      color: "#1fd87b"
+    },
+    numberOfRaces: {
+      bottom: 200,
+      left: 1600,
+      alignment: "left",
+      fontFamily: "Montserrat-BoldItalic",
+      fontSize: 48,
+      color: "#ffffff"
+    }
+  };
 
   // Save ad content to database
   const saveAdContentMutation = useMutation({
@@ -59,16 +97,13 @@ export function AdGenerator() {
     },
   });
 
-  // Save text positioning configuration to database  
-  const saveConfigMutation = useMutation({
-    mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/text-config/default'] });
-    },
-    onError: () => {
-      toast({ title: "Save Error", description: "Failed to save settings.", variant: "destructive" });
-    },
-  });
+  // Save text positioning configuration to database (disabled for now)
+  // const saveConfigMutation = useMutation({
+  //   mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
+  //   onError: () => {
+  //     toast({ title: "Save Error", description: "Failed to save settings.", variant: "destructive" });
+  //   },
+  // });
 
   // Update form when ad content loads from database
   useEffect(() => {
@@ -141,9 +176,19 @@ export function AdGenerator() {
   }, [currentAdData, textConfig, canvasRenderer, fontLoader]);
 
   const handleConfigChange = useCallback((newConfig: TextConfig) => {
-    // This is called for live preview updates only, not for saving
-    // The actual saving happens in the TextPositionEditor via onSave prop
-  }, []);
+    // This is called for immediate live preview updates only
+    // Re-render canvas immediately without saving to database
+    if (canvasRenderer && fontLoader && currentAdData) {
+      try {
+        canvasRenderer.renderWithText(currentAdData, newConfig);
+        setLastUpdated(new Date().toLocaleTimeString());
+        setStatus({ text: "Ready", type: "ready" });
+      } catch (error) {
+        console.error("Failed to render canvas:", error);
+        setStatus({ text: "Render error", type: "error" });
+      }
+    }
+  }, [canvasRenderer, fontLoader, currentAdData]);
 
   const handleDownload = () => {
     if (!canvasRef.current) {
@@ -310,13 +355,13 @@ export function AdGenerator() {
           
           <TabsContent value="positioning" className="mt-6">
             <div className="w-full">
-              {textConfig && (
-                <TextPositionEditor
-                  config={textConfig as TextConfig}
-                  onConfigChange={handleConfigChange}
-                  onSave={(config) => saveConfigMutation.mutate(config)}
-                />
-              )}
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    Text positioning editor temporarily disabled to fix performance issues.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         </Tabs>
