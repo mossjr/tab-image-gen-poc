@@ -124,7 +124,7 @@
   max-height: 100%;
   width: auto;
   height: auto;
-  aspect-ratio: 1080 / 1920;
+  aspect-ratio: 1920 / 1080;
   object-fit: contain;
   border-radius: var(--radius);
 }

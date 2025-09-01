@@ -268,7 +268,7 @@ export function AdGenerator() {
                 <h4 className="text-sm font-medium text-foreground mb-1">Template Information</h4>
                 <ul className="text-xs text-muted-foreground space-y-1">
                   <li>• Template: 2025_08_Green_Harness_Template.png</li>
-                  <li>• Dimensions: 1080x1920 pixels</li>
+                  <li>• Dimensions: 1920x1080 pixels</li>
                   <li>• Fonts: Montserrat variants</li>
                   <li>• Real-time preview enabled</li>
                 </ul>
@@ -303,8 +303,8 @@ export function AdGenerator() {
             <div className="canvas-container bg-muted/20 border-2 border-dashed border-border rounded-lg p-4">
               <canvas
                 ref={canvasRef}
-                width={1080}
-                height={1920}
+                width={1920}
+                height={1080}
                 className="w-full h-auto bg-white rounded border border-border shadow-sm"
                 data-testid="canvas-preview"
               />
@@ -315,7 +315,7 @@ export function AdGenerator() {
               <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center space-x-1">
                   <Image className="h-4 w-4" />
-                  <span>1080×1920</span>
+                  <span>1920×1080</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <span className="w-3 h-3 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full"></span>
