@@ -1,0 +1,42 @@
+{
+  "raceName": {
+    "bottom": 200,
+    "left": 100,
+    "alignment": "left",
+    "fontFamily": "Montserrat-BoldItalic",
+    "fontSize": 60,
+    "color": "#1fd87b"
+  },
+  "prizeAmount": {
+    "bottom": 600,
+    "left": 200,
+    "alignment": "left",
+    "fontFamily": "Montserrat-Black",
+    "fontSize": 120,
+    "color": "#ffffff"
+  },
+  "projectedPool": {
+    "bottom": 700,
+    "left": 540,
+    "alignment": "left",
+    "fontFamily": "Montserrat-BoldItalic",
+    "fontSize": 48,
+    "color": "#1fd87b"
+  },
+  "day": {
+    "bottom": 800,
+    "left": 700,
+    "alignment": "left",
+    "fontFamily": "Montserrat-BoldItalic",
+    "fontSize": 48,
+    "color": "#1fd87b"
+  },
+  "numberOfRaces": {
+    "bottom": 200,
+    "center": 1340,
+    "alignment": "center",
+    "fontFamily": "Montserrat-Bold",
+    "fontSize": 80,
+    "color": "#1fd87b"
+  }
+}

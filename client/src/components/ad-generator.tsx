@@ -2,14 +2,19 @@ import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Download, Eye, Image, Edit, Info, Clock, Layers, RefreshCw, ZoomIn } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Download, Eye, Image, Edit, Info, Clock, Layers, RefreshCw, ZoomIn, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CanvasRenderer } from "@/lib/canvas-renderer";
 import { FontLoader } from "@/lib/font-loader";
+import { TextPositionEditor } from "@/components/text-position-editor";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { type TextConfig } from "@shared/schema";
 import templateImagePath from "@assets/2025_08_Green_Harness_Template_1756701532557.png";
 
 const formSchema = z.object({
@@ -32,6 +37,7 @@ export function AdGenerator() {
     type: "ready" | "loading" | "error";
   }>({ text: "Initializing...", type: "loading" });
   const [lastUpdated, setLastUpdated] = useState<string>("--");
+  const [textConfig, setTextConfig] = useState<TextConfig | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -45,6 +51,31 @@ export function AdGenerator() {
   });
 
   const formData = form.watch();
+
+  // Load text positioning configuration
+  const { data: configData } = useQuery({
+    queryKey: ['/api/text-config/default'],
+    enabled: true,
+  });
+
+  // Save text positioning configuration
+  const saveConfigMutation = useMutation({
+    mutationFn: (config: TextConfig) => apiRequest('POST', '/api/text-config/default', config),
+    onSuccess: () => {
+      toast({ title: "Configuration Saved", description: "Text positioning settings have been saved." });
+      queryClient.invalidateQueries({ queryKey: ['/api/text-config/default'] });
+    },
+    onError: () => {
+      toast({ title: "Save Error", description: "Failed to save configuration.", variant: "destructive" });
+    },
+  });
+
+  // Update local text config when data loads
+  useEffect(() => {
+    if (configData) {
+      setTextConfig(configData as TextConfig);
+    }
+  }, [configData]);
 
   useEffect(() => {
     const initializeCanvas = async () => {
@@ -82,9 +113,9 @@ export function AdGenerator() {
   }, [toast]);
 
   useEffect(() => {
-    if (canvasRenderer && fontLoader) {
+    if (canvasRenderer && fontLoader && textConfig) {
       try {
-        canvasRenderer.renderWithText(formData);
+        canvasRenderer.renderWithText(formData, textConfig);
         setLastUpdated(new Date().toLocaleTimeString());
         setStatus({ text: "Ready", type: "ready" });
       } catch (error) {
@@ -92,7 +123,7 @@ export function AdGenerator() {
         setStatus({ text: "Render error", type: "error" });
       }
     }
-  }, [formData, canvasRenderer, fontLoader]);
+  }, [formData, canvasRenderer, fontLoader, textConfig]);
 
   const handleDownload = () => {
     if (!canvasRef.current) {
@@ -134,7 +165,13 @@ export function AdGenerator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <Tabs defaultValue="content" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="content">Ad Content</TabsTrigger>
+        <TabsTrigger value="positioning">Text Positioning</TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="content" className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
       {/* Form Panel */}
       <div className="space-y-6">
         <Card>
@@ -271,6 +308,7 @@ export function AdGenerator() {
                   <li>• Dimensions: 1920x1080 pixels</li>
                   <li>• Fonts: Montserrat variants</li>
                   <li>• Real-time preview enabled</li>
+                  <li>• Editable text positioning</li>
                 </ul>
               </div>
             </div>
@@ -420,6 +458,82 @@ export function AdGenerator() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </TabsContent>
+      
+      <TabsContent value="positioning" className="mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Text Position Editor */}
+          <div>
+            {textConfig && (
+              <TextPositionEditor
+                config={textConfig}
+                onConfigChange={setTextConfig}
+                onSave={(config) => saveConfigMutation.mutate(config)}
+              />
+            )}
+          </div>
+          
+          {/* Canvas Preview Panel - Same as content tab */}
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center space-x-2">
+                    <Eye className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold text-card-foreground">Live Preview</h2>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                    <div className={`w-2 h-2 rounded-full ${
+                      status.type === "loading" 
+                        ? "bg-yellow-500 animate-pulse" 
+                        : status.type === "error"
+                        ? "bg-destructive"
+                        : "bg-primary"
+                    }`}></div>
+                    <span>Live</span>
+                  </div>
+                </div>
+                
+                {/* Canvas Container */}
+                <div className="canvas-container bg-muted/20 border-2 border-dashed border-border rounded-lg p-4">
+                  <canvas
+                    ref={canvasRef}
+                    width={1920}
+                    height={1080}
+                    className="w-full h-auto bg-white rounded border border-border shadow-sm"
+                    data-testid="canvas-preview-positioning"
+                  />
+                </div>
+
+                {/* Canvas Controls */}
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                    <div className="flex items-center space-x-1">
+                      <Image className="h-4 w-4" />
+                      <span>1920×1080</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <span className="w-3 h-3 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full"></span>
+                      <span>RGB</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      onClick={handleDownload}
+                      variant="outline"
+                      size="sm"
+                      data-testid="button-download-positioning"
+                      disabled={status.type === "loading"}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </TabsContent>
+    </Tabs>
   );
 }

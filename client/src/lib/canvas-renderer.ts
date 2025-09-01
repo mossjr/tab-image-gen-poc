@@ -68,41 +68,52 @@ export class CanvasRenderer {
     projectedPool: string;
     day: string;
     numberOfRaces: string;
-  }): void {
+  }, textConfig?: any): void {
     // Start with clean template
     this.renderTemplate();
 
     // Set up text rendering properties
     this.ctx.textBaseline = 'bottom';
     
-    // Race Name - Bottom edge at 200px, Left edge at 100px, 60pt Montserrat Bold Italic, #1fd87b
-    this.ctx.fillStyle = '#1fd87b';
-    this.ctx.font = 'italic bold 60px Montserrat, Arial, sans-serif';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(formData.raceName, 100, 200);
+    // Use provided config or fall back to defaults
+    const config = textConfig || {
+      raceName: { bottom: 200, left: 100, alignment: "left", fontFamily: "Montserrat-BoldItalic", fontSize: 60, color: "#1fd87b" },
+      prizeAmount: { bottom: 600, left: 200, alignment: "left", fontFamily: "Montserrat-Black", fontSize: 120, color: "#ffffff" },
+      projectedPool: { bottom: 700, left: 540, alignment: "left", fontFamily: "Montserrat-BoldItalic", fontSize: 48, color: "#1fd87b" },
+      day: { bottom: 800, left: 700, alignment: "left", fontFamily: "Montserrat-BoldItalic", fontSize: 48, color: "#1fd87b" },
+      numberOfRaces: { bottom: 200, center: 1340, alignment: "center", fontFamily: "Montserrat-Bold", fontSize: 80, color: "#1fd87b" }
+    };
     
-    // Prize Amount - Bottom edge at 600px, Left edge at 200px, 120pt Montserrat Black, white
-    this.ctx.fillStyle = '#ffffff';
-    this.ctx.font = '900 120px Montserrat, Arial, sans-serif'; // 900 weight for Black
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`$${formData.prizeAmount}`, 200, 600);
+    // Render each text field with its configuration
+    this.renderTextField(formData.raceName, config.raceName);
+    this.renderTextField(`$${formData.prizeAmount}`, config.prizeAmount);
+    this.renderTextField(`$${formData.projectedPool}`, config.projectedPool);
+    this.renderTextField(formData.day, config.day);
+    this.renderTextField(formData.numberOfRaces, config.numberOfRaces);
+  }
+
+  private renderTextField(text: string, config: any): void {
+    this.ctx.fillStyle = config.color;
+    this.ctx.font = this.getFontString(config.fontFamily, config.fontSize);
+    this.ctx.textAlign = config.alignment as CanvasTextAlign;
     
-    // Projected Pool - Bottom edge at 700px, Left edge at 540px, Montserrat Bold Italic, #1fd87b
-    this.ctx.fillStyle = '#1fd87b';
-    this.ctx.font = 'italic bold 48px Montserrat, Arial, sans-serif';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(`$${formData.projectedPool}`, 540, 700);
-    
-    // Day - Bottom edge at 800px, Left edge at 700px, Montserrat Bold Italic, #1fd87b
-    this.ctx.fillStyle = '#1fd87b';
-    this.ctx.font = 'italic bold 48px Montserrat, Arial, sans-serif';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText(formData.day, 700, 800);
-    
-    // Number of Races - Bottom edge at 200px, Center at 1340px, 80pt Montserrat Bold, #1fd87b
-    this.ctx.fillStyle = '#1fd87b';
-    this.ctx.font = 'bold 80px Montserrat, Arial, sans-serif';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText(formData.numberOfRaces, 1340, 200);
+    const x = config.alignment === "center" ? config.center : config.left;
+    this.ctx.fillText(text, x, config.bottom);
+  }
+
+  private getFontString(fontFamily: string, fontSize: number): string {
+    // Convert font family to CSS font string
+    switch (fontFamily) {
+      case "Montserrat-Bold":
+        return `bold ${fontSize}px Montserrat, Arial, sans-serif`;
+      case "Montserrat-BoldItalic":
+        return `italic bold ${fontSize}px Montserrat, Arial, sans-serif`;
+      case "Montserrat-Black":
+        return `900 ${fontSize}px Montserrat, Arial, sans-serif`;
+      case "Montserrat-Regular":
+        return `${fontSize}px Montserrat, Arial, sans-serif`;
+      default:
+        return `${fontSize}px Montserrat, Arial, sans-serif`;
+    }
   }
 }
