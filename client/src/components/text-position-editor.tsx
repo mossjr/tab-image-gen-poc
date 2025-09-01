@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -74,7 +74,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
     });
   }, [activeField, config, form]);
 
-  const handleFieldUpdate = (data: SingleFieldData) => {
+  const handleFieldUpdate = useCallback((data: SingleFieldData) => {
     const updatedFieldConfig: TextPositionConfig = {
       bottom: data.bottom,
       alignment: data.alignment,
@@ -94,7 +94,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
 
     console.log("Updating config for field:", activeField, "with data:", updatedFieldConfig);
     onConfigChange(newConfig);
-  };
+  }, [config, activeField, onConfigChange]);
 
   const formData = form.watch();
   
@@ -105,7 +105,7 @@ export function TextPositionEditor({ config, onConfigChange, onSave }: TextPosit
     }, 50); // Reduced debounce for more responsive updates
     
     return () => clearTimeout(timeoutId);
-  }, [formData]);
+  }, [formData, handleFieldUpdate]);
 
   const resetToDefaults = () => {
     const defaultConfig: TextConfig = {
